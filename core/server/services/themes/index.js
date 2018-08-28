@@ -19,7 +19,7 @@ module.exports = {
         debug('init themes', activeThemeName);
 
         // Register a listener for server-start to load all themes
-        common.events.on('server:start', function readAllThemesOnServerStart() {
+        common.events.on('server.start', function readAllThemesOnServerStart() {
             themeLoader.loadAllThemes();
         });
 
@@ -84,6 +84,7 @@ module.exports = {
         // Use the two theme objects to set the current active theme
         try {
             active.set(loadedTheme, checkedTheme, error);
+            common.events.emit('services.themes.activated');
         } catch (err) {
             common.logging.error(new common.errors.InternalServerError({
                 message: common.i18n.t('errors.middleware.themehandler.activateFailed', {theme: loadedTheme.name}),

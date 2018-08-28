@@ -72,6 +72,25 @@ describe('DB API', function () {
                 var jsonResponse = res.body;
                 should.exist(jsonResponse.db);
                 jsonResponse.db.should.have.length(1);
+                Object.keys(jsonResponse.db[0].data).length.should.eql(21);
+                done();
+            });
+    });
+
+    it('include more tables', function (done) {
+        request.get(testUtils.API.getApiQuery('db/?include=clients,client_trusted_domains'))
+            .set('Authorization', 'Bearer ' + accesstoken)
+            .expect('Content-Type', /json/)
+            .expect(200)
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                const jsonResponse = res.body;
+                should.exist(jsonResponse.db);
+                jsonResponse.db.should.have.length(1);
+                Object.keys(jsonResponse.db[0].data).length.should.eql(23);
                 done();
             });
     });
@@ -116,7 +135,28 @@ describe('DB API', function () {
                 if (err) {
                     return done(err);
                 }
-                res.body.should.match(/data/);
+
+                (typeof res.body).should.be.Object;
+                should.exist(res.body.db[0].filename);
+                fsStub.calledOnce.should.eql(true);
+
+                done();
+            });
+    });
+
+    it('export can be triggered and named by backup client', function (done) {
+        backupQuery = '?client_id=' + backupClient.slug + '&client_secret=' + backupClient.secret + '&filename=test';
+        fsStub = sandbox.stub(fs, 'writeFile').resolves();
+        request.post(testUtils.API.getApiQuery('db/backup' + backupQuery))
+            .expect('Content-Type', /json/)
+            .expect(200)
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                (typeof res.body).should.be.Object;
+                res.body.db[0].filename.should.match(/test\.json/);
                 fsStub.calledOnce.should.eql(true);
 
                 done();

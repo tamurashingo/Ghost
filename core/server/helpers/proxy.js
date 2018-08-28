@@ -35,7 +35,6 @@ module.exports = {
     // Config!
     // Keys used:
     // isPrivacyDisabled & referrerPolicy used in ghost_head
-    // Subscribe app uses routeKeywords
     config: {
         get: config.get.bind(config),
         isPrivacyDisabled: config.isPrivacyDisabled.bind(config)
@@ -64,6 +63,6 @@ module.exports = {
     // Various utils, needs cleaning up / simplifying
     socialUrls: require('../lib/social/urls'),
     blogIcon: require('../lib/image/blog-icon'),
-    url: require('../services/url').utils,
+    urlService: require('../services/url'),
     localUtils: require('./utils')
 };

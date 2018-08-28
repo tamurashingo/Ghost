@@ -5,12 +5,11 @@ var oauth2orize = require('oauth2orize'),
     authUtils = require('./utils'),
     spamPrevention = require('../../web/middleware/api/spam-prevention'),
     common = require('../../lib/common'),
-    knex = require('../../data/db').knex,
     oauthServer,
     oauth;
 
 function exchangeRefreshToken(client, refreshToken, scope, body, authInfo, done) {
-    knex.transaction(function (transacting) {
+    models.Base.transaction(function (transacting) {
         var options = {
             transacting: transacting
         };
@@ -179,7 +178,13 @@ oauth = {
             accessToken: authUtils.getBearerAutorizationToken(req)
         };
 
-        return oauthServer.token()(req, res, next);
+        return oauthServer.token()(req, res, function (err) {
+            if (err && err.status === 400) {
+                err = new common.errors.BadRequestError({err: err, message: err.message});
+            }
+
+            next(err);
+        });
     }
 };
 

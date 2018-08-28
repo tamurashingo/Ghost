@@ -1,4 +1,4 @@
-var should = require('should'), // jshint ignore:line
+var should = require('should'),
     sinon = require('sinon'),
     hbs = require('../../../../server/services/themes/engine'),
 
@@ -98,7 +98,7 @@ describe('Themes', function () {
                 themeDataExpectedProps = ['posts_per_page'],
                 blogDataExpectedProps = [
                     'url', 'title', 'description', 'logo', 'cover_image', 'icon', 'twitter', 'facebook', 'navigation',
-                    'permalinks', 'timezone', 'amp'
+                    'timezone', 'amp'
                 ],
                 updateOptionsStub;
 

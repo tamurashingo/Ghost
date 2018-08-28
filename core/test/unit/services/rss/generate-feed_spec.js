@@ -1,9 +1,11 @@
 var should = require('should'),
+    sinon = require('sinon'),
     _ = require('lodash'),
     testUtils = require('../../../utils'),
     configUtils = require('../../../utils/configUtils'),
-
-    generateFeed = require('../../../../server/services/rss/generate-feed');
+    urlService = require('../../../../server/services/url'),
+    generateFeed = require('../../../../server/services/rss/generate-feed'),
+    sandbox = sinon.sandbox.create();
 
 describe('RSS: Generate Feed', function () {
     var data = {},
@@ -13,23 +15,26 @@ describe('RSS: Generate Feed', function () {
 
     before(function () {
         posts = _.cloneDeep(testUtils.DataGenerator.forKnex.posts);
+
         posts = _.filter(posts, function filter(post) {
             return post.status === 'published' && post.page === false;
         });
 
-        _.each(posts, function (post, i) {
-            post.id = i;
+        _.each(posts, function (post) {
             post.url = '/' + post.slug + '/';
-            post.author = {name: 'Joe Bloggs'};
+            post.primary_author = {name: 'Joe Bloggs'};
         });
     });
 
     afterEach(function () {
         configUtils.restore();
+        sandbox.restore();
     });
 
     beforeEach(function () {
         configUtils.set({url: 'http://my-ghost-blog.com'});
+
+        sandbox.stub(urlService, 'getUrlByResourceId');
 
         baseUrl = '/rss/';
 
@@ -71,6 +76,10 @@ describe('RSS: Generate Feed', function () {
 
     it('should get the item tags correct', function (done) {
         data.posts = posts;
+
+        _.each(data.posts, function (post) {
+            urlService.getUrlByResourceId.withArgs(post.id, {secure: undefined, absolute: true}).returns('http://my-ghost-blog.com/' + post.slug + '/');
+        });
 
         generateFeed(baseUrl, data).then(function (xmlData) {
             should.exist(xmlData);
@@ -115,7 +124,7 @@ describe('RSS: Generate Feed', function () {
             // item tags
             xmlData.should.match(/<title><!\[CDATA\[Short and Sweet\]\]>/);
             xmlData.should.match(/<description><!\[CDATA\[test stuff/);
-            xmlData.should.match(/<content:encoded><!\[CDATA\[<div class="kg-card-markdown"><h2 id="testing">testing<\/h2>\n/);
+            xmlData.should.match(/<content:encoded><!\[CDATA\[<h2 id="testing">testing<\/h2>\n/);
             xmlData.should.match(/<img src="http:\/\/placekitten.com\/500\/200"/);
             xmlData.should.match(/<media:content url="http:\/\/placekitten.com\/500\/200" medium="image"\/>/);
             xmlData.should.match(/<category><!\[CDATA\[public\]\]/);
@@ -126,7 +135,7 @@ describe('RSS: Generate Feed', function () {
     });
 
     it('should no error if author is somehow not present', function (done) {
-        data.posts = [_.omit(posts[2], 'author')];
+        data.posts = [_.omit(posts[2], 'primary_author')];
 
         generateFeed(baseUrl, data).then(function (xmlData) {
             should.exist(xmlData);
@@ -134,7 +143,7 @@ describe('RSS: Generate Feed', function () {
             // special/optional tags
             xmlData.should.match(/<title><!\[CDATA\[Short and Sweet\]\]>/);
             xmlData.should.match(/<description><!\[CDATA\[test stuff/);
-            xmlData.should.match(/<content:encoded><!\[CDATA\[<div class="kg-card-markdown"><h2 id="testing">testing<\/h2>\n/);
+            xmlData.should.match(/<content:encoded><!\[CDATA\[<h2 id="testing">testing<\/h2>\n/);
             xmlData.should.match(/<img src="http:\/\/placekitten.com\/500\/200"/);
             xmlData.should.match(/<media:content url="http:\/\/placekitten.com\/500\/200" medium="image"\/>/);
             xmlData.should.not.match(/<dc:creator>/);
@@ -152,7 +161,7 @@ describe('RSS: Generate Feed', function () {
             // special/optional tags
             xmlData.should.match(/<title><!\[CDATA\[Short and Sweet\]\]>/);
             xmlData.should.match(/<description><!\[CDATA\[test stuff/);
-            xmlData.should.match(/<content:encoded><!\[CDATA\[<div class="kg-card-markdown"><h2 id="testing">testing<\/h2>\n/);
+            xmlData.should.match(/<content:encoded><!\[CDATA\[<h2 id="testing">testing<\/h2>\n/);
             xmlData.should.match(/<img src="http:\/\/placekitten.com\/500\/200"/);
             xmlData.should.match(/<media:content url="http:\/\/placekitten.com\/500\/200" medium="image"\/>/);
 
@@ -162,6 +171,10 @@ describe('RSS: Generate Feed', function () {
 
     it('should use excerpt when no meta_description is set', function (done) {
         data.posts = [posts[0]];
+
+        _.each(data.posts, function (post) {
+            urlService.getUrlByResourceId.withArgs(post.id, {secure: undefined, absolute: true}).returns('http://my-ghost-blog.com/' + post.slug + '/');
+        });
 
         generateFeed(baseUrl, data).then(function (xmlData) {
             should.exist(xmlData);

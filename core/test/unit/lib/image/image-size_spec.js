@@ -99,6 +99,41 @@ describe('lib/image: image size', function () {
             }).catch(done);
         });
 
+        it('[success] should return image dimensions when no image extension given', function (done) {
+            // This test is mocked, but works with this specific example.
+            // You can comment out the mocks and the test should still pass.
+            var url = 'https://www.zomato.com/logo/18163505/minilogo',
+                expectedImageObject =
+                    {
+                        height: 15,
+                        url: 'https://www.zomato.com/logo/18163505/minilogo',
+                        width: 104
+                    };
+
+            requestMock = nock('https://www.zomato.com')
+                .matchHeader('User-Agent', /Mozilla\/.*Safari\/.*/)
+                .get('/logo/18163505/minilogo')
+                .reply(200, {
+                    body: '<Buffer 89 50 4e 47 0d 0a 1a 0a 00 00 00 0d 49 48 44 52 00 00 00 68 00 00 00 0f 08 02 00 00 00 87 8f 1d 14 00 00 03 33 49 44 41 54 58 c3 ed 97 6b 48 93 51 18>'
+                });
+
+            sizeOfStub = sandbox.stub();
+            sizeOfStub.returns({width: 104, height: 15, type: 'png'});
+            imageSize.__set__('sizeOf', sizeOfStub);
+
+            result = imageSize.getImageSizeFromUrl(url).then(function (res) {
+                requestMock.isDone().should.be.true();
+                should.exist(res);
+                should.exist(res.width);
+                res.width.should.be.equal(expectedImageObject.width);
+                should.exist(res.height);
+                res.height.should.be.equal(expectedImageObject.height);
+                should.exist(res.url);
+                res.url.should.be.equal(expectedImageObject.url);
+                done();
+            }).catch(done);
+        });
+
         it('[success] should returns largest image value for .ico files', function (done) {
             var url = 'https://super-website.com/media/icon.ico',
                 expectedImageObject =
@@ -300,6 +335,20 @@ describe('lib/image: image size', function () {
                 .catch(function (err) {
                     requestMock.isDone().should.be.true();
                     should.exist(err);
+                    err.errorType.should.be.equal('NotFoundError');
+                    err.message.should.be.equal('Image not found.');
+                    done();
+                });
+        });
+
+        it('[failure] handles invalid URL', function (done) {
+            var url = 'Not-a-valid-url';
+
+            result = imageSize.getImageSizeFromUrl(url)
+                .catch(function (err) {
+                    should.exist(err);
+                    err.errorType.should.be.equal('InternalServerError');
+                    err.message.should.be.equal('URL empty or invalid.');
                     done();
                 });
         });
@@ -317,6 +366,8 @@ describe('lib/image: image size', function () {
                 .catch(function (err) {
                     requestMock.isDone().should.be.true();
                     should.exist(err);
+                    err.errorType.should.be.equal('InternalServerError');
+                    err.message.should.be.equal('Request timed out.');
                     done();
                 });
         });
@@ -338,6 +389,8 @@ describe('lib/image: image size', function () {
                 .catch(function (err) {
                     requestMock.isDone().should.be.true();
                     should.exist(err);
+                    err.errorType.should.be.equal('InternalServerError');
+                    err.error.should.be.equal('image-size could not find dimensions');
                     done();
                 });
         });
@@ -347,12 +400,14 @@ describe('lib/image: image size', function () {
 
             requestMock = nock('https://notarealwebsite.com')
                 .get('/images/notapicture.jpg')
-                .reply(404, {message: 'something awful happened', code: 'AWFUL_ERROR'});
+                .reply(500, {message: 'something awful happened', code: 'AWFUL_ERROR'});
 
             result = imageSize.getImageSizeFromUrl(url)
                 .catch(function (err) {
                     requestMock.isDone().should.be.true();
                     should.exist(err);
+                    err.errorType.should.be.equal('InternalServerError');
+                    err.message.should.be.equal('Unknown Request error.');
                     done();
                 });
         });

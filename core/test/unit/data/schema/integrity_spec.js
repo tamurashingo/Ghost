@@ -1,4 +1,4 @@
-var should = require('should'), // jshint ignore:line
+var should = require('should'),
     _ = require('lodash'),
     crypto = require('crypto'),
     schema = require('../../../../server/data/schema'),
@@ -19,8 +19,8 @@ var should = require('should'), // jshint ignore:line
  */
 describe('DB version integrity', function () {
     // Only these variables should need updating
-    var currentSchemaHash = '329f9b498944c459040426e16fc65b11',
-        currentFixturesHash = '90925e0004a0cedd1e6ea789c81ec67d';
+    var currentSchemaHash = '22d24b1de23d118b90e9547fefae5ad7',
+        currentFixturesHash = 'eab42b1e9cd754e76600f1c57c4a7af8';
 
     // If this test is failing, then it is likely a change has been made that requires a DB version bump,
     // and the values above will need updating as confirmation

@@ -1,9 +1,11 @@
 var debug = require('ghost-ignition').debug('blog'),
     path = require('path'),
     express = require('express'),
+    setPrototypeOf = require('setprototypeof'),
 
     // App requires
     config = require('../../config'),
+    apps = require('../../services/apps'),
     constants = require('../../lib/constants'),
     storage = require('../../adapters/storage'),
     urlService = require('../../services/url'),
@@ -32,7 +34,13 @@ var debug = require('ghost-ignition').debug('blog'),
     // middleware for themes
     themeMiddleware = require('../../services/themes').middleware;
 
-module.exports = function setupSiteApp() {
+let router;
+
+function SiteRouter(req, res, next) {
+    router(req, res, next);
+}
+
+module.exports = function setupSiteApp(options = {}) {
     debug('Site setup start');
 
     var siteApp = express();
@@ -44,8 +52,13 @@ module.exports = function setupSiteApp() {
     // you can extend Ghost with a custom redirects file
     // see https://github.com/TryGhost/Ghost/issues/7707
     customRedirects.use(siteApp);
+
     // More redirects
     siteApp.use(adminRedirects());
+
+    // force SSL if blog url is set to https. The redirects handling must happen before asset and page routing,
+    // otherwise we serve assets/pages with http. This can cause mixed content warnings in the admin client.
+    siteApp.use(urlRedirects);
 
     // Static content/assets
     // @TODO make sure all of these have a local 404 error handler
@@ -53,13 +66,13 @@ module.exports = function setupSiteApp() {
     siteApp.use(serveFavicon());
     // /public/ghost-sdk.js
     siteApp.use(servePublicFile('public/ghost-sdk.js', 'application/javascript', constants.ONE_HOUR_S));
-    siteApp.use(servePublicFile('public/ghost-sdk.min.js', 'application/javascript', constants.ONE_HOUR_S));
+    siteApp.use(servePublicFile('public/ghost-sdk.min.js', 'application/javascript', constants.ONE_YEAR_S));
     // Serve sitemap.xsl file
     siteApp.use(servePublicFile('sitemap.xsl', 'text/xsl', constants.ONE_DAY_S));
 
     // Serve stylesheets for default templates
     siteApp.use(servePublicFile('public/ghost.css', 'text/css', constants.ONE_HOUR_S));
-    siteApp.use(servePublicFile('public/ghost.min.css', 'text/css', constants.ONE_HOUR_S));
+    siteApp.use(servePublicFile('public/ghost.min.css', 'text/css', constants.ONE_YEAR_S));
 
     // Serve images for default templates
     siteApp.use(servePublicFile('public/404-ghost@2x.png', 'png', constants.ONE_HOUR_S));
@@ -105,10 +118,6 @@ module.exports = function setupSiteApp() {
     // send 503 error page in case of maintenance
     siteApp.use(maintenance);
 
-    // Force SSL if required
-    // must happen AFTER asset loading and BEFORE routing
-    siteApp.use(urlRedirects);
-
     // Add in all trailing slashes & remove uppercase
     // must happen AFTER asset loading and BEFORE routing
     siteApp.use(prettyURLs);
@@ -122,14 +131,33 @@ module.exports = function setupSiteApp() {
 
     debug('General middleware done');
 
+    router = siteRoutes(options);
+    setPrototypeOf(SiteRouter, router);
+
     // Set up Frontend routes (including private blogging routes)
-    siteApp.use(siteRoutes());
+    siteApp.use(SiteRouter);
 
     // ### Error handlers
     siteApp.use(errorHandler.pageNotFound);
-    siteApp.use(errorHandler.handleHTMLResponse);
+    siteApp.use(errorHandler.handleThemeResponse);
 
     debug('Site setup end');
 
     return siteApp;
+};
+
+module.exports.reload = () => {
+    // https://github.com/expressjs/express/issues/2596
+    router = siteRoutes({start: true});
+    setPrototypeOf(SiteRouter, router);
+
+    // re-initialse apps (register app routers, because we have re-initialised the site routers)
+    apps.init();
+
+    // connect routers and resources again
+    urlService.queue.start({
+        event: 'init',
+        tolerance: 100,
+        requiredSubscriberCount: 1
+    });
 };

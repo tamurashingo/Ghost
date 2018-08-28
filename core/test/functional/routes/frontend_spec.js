@@ -55,79 +55,6 @@ describe('Frontend Routing', function () {
             });
     });
 
-    describe('Date permalinks', function () {
-        before(function (done) {
-            // Only way to swap permalinks setting is to login and visit the URL because
-            // poking the database doesn't work as settings are cached
-            testUtils.togglePermalinks(request, 'date')
-                .then(function () {
-                    done();
-                })
-                .catch(done);
-        });
-
-        after(function (done) {
-            testUtils.togglePermalinks(request)
-                .then(function () {
-                    done();
-                })
-                .catch(done);
-        });
-
-        it('should load a post with date permalink', function (done) {
-            var date = moment().format('YYYY/MM/DD');
-
-            request.get('/' + date + '/welcome/')
-                .expect(200)
-                .expect('Content-Type', /html/)
-                .end(doEnd(done));
-        });
-
-        it('expect redirect because of wrong/old permalink prefix', function (done) {
-            var date = moment().format('YYYY/MM/DD');
-
-            request.get('/2016/04/01/welcome/')
-                .expect(301)
-                .end(function (err) {
-                    if (err) {
-                        return done(err);
-                    }
-
-                    request.get('/' + date + '/welcome/')
-                        .expect(200)
-                        .expect('Content-Type', /html/)
-                        .end(doEnd(done));
-                });
-        });
-
-        it('should serve RSS with date permalink', function (done) {
-            request.get('/rss/')
-                .expect('Content-Type', 'text/xml; charset=utf-8')
-                .expect('Cache-Control', testUtils.cacheRules.public)
-                .expect(200)
-                .end(function (err, res) {
-                    if (err) {
-                        return done(err);
-                    }
-
-                    should.not.exist(res.headers['x-cache-invalidate']);
-                    should.not.exist(res.headers['X-CSRF-Token']);
-                    should.not.exist(res.headers['set-cookie']);
-                    should.exist(res.headers.date);
-
-                    var content = res.text,
-                        todayMoment = moment(),
-                        dd = todayMoment.format('DD'),
-                        mm = todayMoment.format('MM'),
-                        yyyy = todayMoment.format('YYYY'),
-                        postLink = '/' + yyyy + '/' + mm + '/' + dd + '/welcome/';
-
-                    content.indexOf(postLink).should.be.above(0);
-                    done();
-                });
-        });
-    });
-
     describe('Test with Initial Fixtures', function () {
         describe('Error', function () {
             it('should 404 for unknown post', function (done) {
@@ -214,6 +141,7 @@ describe('Frontend Routing', function () {
                         should.not.exist(res.headers['set-cookie']);
                         should.exist(res.headers.date);
 
+                        // NOTE: This is the title from the settings.
                         $('title').text().should.equal('Welcome to Ghost');
 
                         // @TODO: change or remove?
@@ -251,7 +179,7 @@ describe('Frontend Routing', function () {
 
             it('should redirect to editor', function (done) {
                 request.get('/welcome/edit/')
-                    .expect('Location', /ghost\/#\/editor\/\w+/)
+                    .expect('Location', /ghost\/editor\/\w+/)
                     .expect('Cache-Control', testUtils.cacheRules.public)
                     .expect(302)
                     .end(doEnd(done));
@@ -301,6 +229,7 @@ describe('Frontend Routing', function () {
                         should.exist(res.headers.date);
 
                         $('title').text().should.equal('Welcome to Ghost');
+
                         $('.content .post').length.should.equal(1);
                         $('.poweredby').text().should.equal('Proudly published with Ghost');
                         $('body.amp-template').length.should.equal(1);
@@ -321,7 +250,7 @@ describe('Frontend Routing', function () {
                     .end(doEnd(done));
             });
 
-            it('should not render AMP, when AMP is disabled', function (done) {
+            it('should redirect to regular post when AMP is disabled', function (done) {
                 sandbox.stub(settingsCache, 'get').callsFake(function (key, options) {
                     if (key === 'amp' && !options) {
                         return false;
@@ -330,8 +259,8 @@ describe('Frontend Routing', function () {
                 });
 
                 request.get('/welcome/amp/')
-                    .expect(404)
-                    .expect(/Page not found/)
+                    .expect('Location', '/welcome/')
+                    .expect(301)
                     .end(doEnd(done));
             });
         });
@@ -399,7 +328,7 @@ describe('Frontend Routing', function () {
 
             it('should redirect to editor', function (done) {
                 request.get('/static-page-test/edit/')
-                    .expect('Location', /ghost\/#\/editor\/\w+/)
+                    .expect('Location', /ghost\/editor\/\w+/)
                     .expect('Cache-Control', testUtils.cacheRules.public)
                     .expect(302)
                     .end(doEnd(done));

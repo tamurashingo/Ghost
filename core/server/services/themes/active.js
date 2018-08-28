@@ -1,13 +1,8 @@
-'use strict';
-
 /**
  * # Active Theme
  *
  * This file defines a class of active theme, and also controls the getting and setting a single instance, as there
  * can only ever be one active theme. Unlike a singleton, the active theme can change, however only in a controlled way.
- *
- * I've made use of the new class & constructor syntax here, as we are now only supporting Node v4 and above, which has
- * full support for these features.
  *
  * There are several different patterns available for keeping data private. Elsewhere in Ghost we use the
  * naming convention of the _ prefix. Even though this has the downside of not being truly private, it is still one
@@ -17,6 +12,7 @@
  *
  */
 var join = require('path').join,
+    _ = require('lodash'),
     themeConfig = require('./config'),
     config = require('../../config'),
     engine = require('./engine'),
@@ -77,6 +73,10 @@ class ActiveTheme {
 
     hasTemplate(templateName) {
         return this._templates.indexOf(templateName) > -1;
+    }
+
+    updateTemplateOptions(options) {
+        engine._options.templateOptions = _.merge(engine._options.templateOptions, options);
     }
 
     config(key) {

@@ -95,7 +95,7 @@ themes = {
         }
 
         return localUtils
-        // Permissions
+            // Permissions
             .handlePermissions('themes', 'add')(options)
             // Validation
             .then(function validateTheme() {
@@ -115,7 +115,6 @@ themes = {
                 }
             })
             .then(function storeNewTheme() {
-                common.events.emit('theme.uploaded', zip.shortName);
                 // store extracted theme
                 return themeUtils.storage.save({
                     name: zip.shortName,
@@ -165,14 +164,13 @@ themes = {
             theme = themeList.get(themeName);
 
         if (!theme) {
-            return Promise.reject(new common.errors.BadRequestError({message: common.i18n.t('errors.api.themes.invalidRequest')}));
+            return Promise.reject(new common.errors.BadRequestError({message: common.i18n.t('errors.api.themes.invalidThemeName')}));
         }
 
         return localUtils
         // Permissions
             .handlePermissions('themes', 'read')(options)
             .then(function sendTheme() {
-                common.events.emit('theme.downloaded', themeName);
                 return themeUtils.storage.serve({
                     name: themeName
                 });
@@ -212,7 +210,6 @@ themes = {
             // And some extra stuff to maintain state here
             .then(function deleteTheme() {
                 themeList.del(themeName);
-                common.events.emit('theme.deleted', themeName);
                 // Delete returns an empty 204 response
             });
     }
